@@ -157,12 +157,15 @@ proc ks_asm(ks: Engine; toasm: cstring; address: uint64;
             encoding: ptr ptr byte; encoding_size: ptr csize; stat_count: ptr csize): cint {.ks.}
 proc ks_free(p: ptr byte) {.ks.}
 
+proc `$`*(err: KeystoneErrorCode): string {.inline.} =
+  ## Returns a string representation of the given error code.
+  $ks_strerror(err)
+
 template raiseIfNeeded(err: KeystoneErrorCode) =
   if err != KeystoneErrorCode.OK:
-    let exn = newException(KeystoneError, "")
+    let exn = newException(KeystoneError, $err)
     exn.code = err
     raise exn
-
 
 proc keystoneVersion*(): (int, int, int) {.inline.} =
   ## Returns the version of the Keystone library as a (major, minor, extra) tuple.
@@ -174,10 +177,6 @@ proc keystoneVersion*(): (int, int, int) {.inline.} =
 proc isSupported*(arch: Architecture): bool {.inline.} =
   ## Returns whether the specified architecture is supported by Keystone.
   ks_arch_supported(arch)
-
-proc `$`*(err: KeystoneErrorCode): string {.inline.} =
-  ## Returns a string representation of the given error code.
-  $ks_strerror(err)
 
 proc `syntaxOption=`*(engine: Engine, val: SyntaxOption) {.inline.} =
   ## Sets the syntax options of the engine.
@@ -191,7 +190,7 @@ proc newEngine*(arch: Architecture, mode: Mode): Engine {.inline.} =
   ## Creates a new Keystone engine.
   ks_open(arch, mode, addr result).raiseIfNeeded()
 
-proc closeEngine*(engine: Engine) {.inline.} =
+proc close*(engine: Engine) {.inline.} =
   ## Destroys the engine.
   ks_close(engine).raiseIfNeeded()
 

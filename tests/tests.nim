@@ -4,13 +4,13 @@ template createEngine(engine: untyped, arch, mode) =
   let engine = newEngine(arch, mode)
 
   defer:
-    engine.closeEngine()
+    engine.close()
 
 
 suite "keystone tests":
 
   test "create engine":
-    newEngine(Architecture.X86, Mode.b64).closeEngine()
+    newEngine(Architecture.X86, Mode.b64).close()
 
   test "emit code":
     createEngine(engine, Architecture.X86, Mode.b32)
@@ -47,26 +47,26 @@ suite "keystone tests":
       discard engine.assemble("ad eax, eax")
 
   test "built-in constructors":
-    newX86Engine().closeEngine()
-    newX64Engine().closeEngine()
-    newARMEngine().closeEngine()
-    newThumbEngine().closeEngine()
+    newX86Engine().close()
+    newX64Engine().close()
+    newARMEngine().close()
+    newThumbEngine().close()
 
     if false:
-      newARMv8Engine().closeEngine()
-      newThumbv8Engine().closeEngine()
+      newARMv8Engine().close()
+      newThumbv8Engine().close()
 
-    newARM64Engine().closeEngine()
-    newMips32Engine().closeEngine()
-    newMips64Engine().closeEngine()
-    newPpc32beEngine().closeEngine()
-    newPpc64beEngine().closeEngine()
-    newPpc64Engine().closeEngine()
-    newSparc32Engine().closeEngine()
-    newSparc64beEngine().closeEngine()
+    newARM64Engine().close()
+    newMips32Engine().close()
+    newMips64Engine().close()
+    newPpc32beEngine().close()
+    newPpc64beEngine().close()
+    newPpc64Engine().close()
+    newSparc32Engine().close()
+    newSparc64beEngine().close()
 
     if false:
-      newEVMEngine().closeEngine()
+      newEVMEngine().close()
     
-    newHexagonEngine().closeEngine()
-    newSystemzEngine().closeEngine()
+    newHexagonEngine().close()
+    newSystemzEngine().close()
