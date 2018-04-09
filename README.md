@@ -34,3 +34,19 @@ try:
 expect KeystoneError:
   echo "Error encountered: ", getCurrentExceptionMsg()
 ```
+
+Thanks to macros, emitting any assembly code is *very* easy.
+
+```nim
+let engine = newX86Engine()
+
+# To a new buffer
+let buf = assembly engine:
+  add eax, eax
+  ret
+
+# To an existing buffer
+assembly engine, buf:
+  add eax, eax
+  ret
+```

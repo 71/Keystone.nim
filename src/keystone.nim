@@ -268,3 +268,42 @@ template `.()`*(engine: Engine, opcode: untyped, buf: seq[byte], args: varargs[s
 
 template `.()`*(engine: Engine, opcode: untyped, args: varargs[string]): EncodedData =
   engine.assemble(astToStr(opcode) & " " & args.join(", "))
+
+
+import macros
+
+macro assembly*(engine: Engine, args: varargs[untyped]): untyped =
+  if args.len == 0:
+    error("An assembly body must be provided.")
+  elif args.len > 2:
+    error("Only two arguments can be provided.")
+
+  let addBuf = args.len == 1
+  let body = if addBuf: args[0] else: args[1]
+  
+  expectKind(body, nnkStmtList)
+
+  result = newNimNode(nnkStmtList, body)
+
+  let buf =
+    if addBuf: genSym(nskVar, "buf")
+    else: args[0]
+
+  if addBuf:
+    result.add quote do:
+      var `buf` = newSeqOfCap[byte](64)
+
+  for s in body:
+    case s.kind
+    of nnkCommentStmt:
+      continue
+    of nnkCommand, nnkIdent:
+      let ins = s.toStrLit
+
+      result.add quote do:
+        `engine`.assemble(`ins`, `buf`)
+    else:
+      error("Unknown assembly syntax.", s)
+
+  if addBuf:
+    result.add buf

@@ -27,7 +27,7 @@ suite "keystone tests":
 
     check(buf == @[ 0x01u8, 0xc0u8, 0xc3u8 ])
 
-  test "emit code with template":
+  test "emit code with dot operator":
     createEngine(engine, Architecture.X86, Mode.b32)
 
     check(engine.add("eax", "eax").buf == @[ 0x01u8, 0xc0u8 ])
@@ -39,6 +39,24 @@ suite "keystone tests":
     engine.ret(buf)
 
     check(buf == @[ 0x01u8, 0xc0u8, 0xc3u8 ])
+
+  test "emit code with macro":
+    createEngine(engine, Architecture.X86, Mode.b32)
+
+    var b1 = newSeqOfCap[byte](64)
+
+    assembly engine, b1:
+      add eax, eax
+      ret
+
+    check(b1 == @[ 0x01u8, 0xc0u8, 0xc3u8 ])
+
+    let b2 = assembly engine:
+      add eax, eax
+      ret
+
+    check(b2 == @[ 0x01u8, 0xc0u8, 0xc3u8 ])
+
 
   test "raise error on invalid code":
     createEngine(engine, Architecture.X86, Mode.b32)
