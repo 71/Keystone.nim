@@ -102,15 +102,18 @@ type
 
 
 ## Mode.
-type Mode* {.pure.} = enum
-  littleEndian = 0 ##  Little-endian mode (default).
+type Mode* {.pure.} = distinct uint
 
-  b16 = 1 shl 1    ##  16-bit mode.
-  b32 = 1 shl 2    ##  32-bit mode.
-  b64 = 1 shl 3    ##  64-bit mode.
-
-  bigEndian = 1 shl 30  ##  Big-endian mode.
-
+##  Little-endian mode (default).
+template littleEndian*(m: type Mode): Mode = 0.Mode
+##  16-bit mode.
+template b16*(m: type Mode): Mode = (1 shl 1).Mode
+##  32-bit mode.
+template b32*(m: type Mode): Mode = (1 shl 2).Mode
+##  64-bit mode.
+template b64*(m: type Mode): Mode = (1 shl 3).Mode
+##  Big-endian mode.
+template bigEndian*(m: type Mode): Mode = (1 shl 30).Mode
 ## ARM mode.
 template arm*(m: type Mode): Mode = (1 shl 0).Mode
 ## ARM64 mode.
@@ -142,14 +145,14 @@ template sparc64*(m: type Mode): Mode = (1 shl 3).Mode
 ## SparcV9 mode.
 template v9*(m: type Mode): Mode = (1 shl 4).Mode
 
-proc `or`*(a, b: Mode): uint {.inline.} =
-  a.uint or b.uint
+proc `or`*(a, b: Mode): Mode {.inline.} =
+  (a.uint or b.uint).Mode
 
 
 
 proc ks_version(major: ptr cuint; minor: ptr cuint): cuint {.ks.}
 proc ks_arch_supported(arch: Architecture): bool {.ks.}
-proc ks_open[T: Mode|uint](arch: Architecture; mode: T; ks: ptr Engine): KeystoneErrorCode {.ks.}
+proc ks_open(arch: Architecture; mode: Mode; ks: ptr Engine): KeystoneErrorCode {.ks.}
 proc ks_close(ks: Engine): KeystoneErrorCode {.ks.}
 proc ks_errno(ks: Engine): KeystoneErrorCode {.ks.}
 proc ks_strerror(code: KeystoneErrorCode): cstring {.ks.}
@@ -187,9 +190,9 @@ proc `symbolResolver=`*(engine: Engine, resolver: SymbolResolver) {.inline.} =
   ## Sets the symbol resulver used by the engine.
   discard ks_option(engine, OptionType.SYM_RESOLVER, cast[csize_t](resolver))
 
-proc newEngine*[T: Mode|uint](arch: Architecture, mode: T): Engine {.inline.} =
+proc newEngine*(arch: Architecture, mode: Mode): Engine {.inline.} =
   ## Creates a new Keystone engine.
-  ks_open(arch, mode.uint, addr result).raiseIfNeeded()
+  ks_open(arch, mode, addr result).raiseIfNeeded()
 
 proc close*(engine: Engine) {.inline.} =
   ## Destroys the engine.
@@ -241,7 +244,7 @@ proc assemble*(engine: Engine, str: string, buffer: var seq[byte], address: uint
 template ctor(name, arch, mode) =
   proc name*(): Engine {.inline.} =
     ## Creates a new Keystone engine using the chosen architecture.
-    ks_open(arch, mode.uint, addr result).raiseIfNeeded()
+    ks_open(arch, mode, addr result).raiseIfNeeded()
 
 ctor(newX86Engine,       Architecture.X86, Mode.b32)
 ctor(newX64Engine,       Architecture.X86, Mode.b64)
