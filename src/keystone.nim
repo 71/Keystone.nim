@@ -102,7 +102,7 @@ type
 
 
 ## Mode.
-type Mode* {.pure.} = distinct uint
+type Mode* = distinct uint
 
 ##  Little-endian mode (default).
 template littleEndian*(m: type Mode): Mode = 0.Mode
