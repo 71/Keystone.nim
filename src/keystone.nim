@@ -3,9 +3,9 @@ import strutils
 when defined(windows):
   const libname = "keystone.dll"
 else:
-  const libname = "keystone"
-
+  const libname = "libkeystone.so"
 {.pragma: ks, cdecl, importc, dynlib: libname.}
+
 
 type
 
@@ -72,7 +72,7 @@ type
     MISSINGFEATURE,
     MNEMONICFAIL
 
-  KeystoneError* = object of Exception
+  KeystoneError* = object of CatchableError
     code*: KeystoneErrorCode
 
   ##  Runtime option for the Keystone engine
@@ -92,7 +92,7 @@ type
   ##  Resolver callback to provide value for a missing symbol in @symbol.
   ##  To handle a symbol, the resolver must put value of the symbol in @value,
   ##  then returns True.
-  SymbolResolver* = proc (symbol: cstring; value: ptr csize): bool {.cdecl.}
+  SymbolResolver* = proc (symbol: cstring; value: ptr csize_t): bool {.cdecl.}
 
   ## Reference to a Keystone engine.
   Engine* = pointer
@@ -142,19 +142,20 @@ template sparc64*(m: type Mode): Mode = (1 shl 3).Mode
 ## SparcV9 mode.
 template v9*(m: type Mode): Mode = (1 shl 4).Mode
 
-proc `or`*(a, b: Mode): Mode {.inline.} =
-  (a.uint or b.uint).Mode
+proc `or`*(a, b: Mode): uint {.inline.} =
+  a.uint or b.uint
+
 
 
 proc ks_version(major: ptr cuint; minor: ptr cuint): cuint {.ks.}
 proc ks_arch_supported(arch: Architecture): bool {.ks.}
-proc ks_open(arch: Architecture; mode: Mode; ks: ptr Engine): KeystoneErrorCode {.ks.}
+proc ks_open[T: Mode|uint](arch: Architecture; mode: T; ks: ptr Engine): KeystoneErrorCode {.ks.}
 proc ks_close(ks: Engine): KeystoneErrorCode {.ks.}
 proc ks_errno(ks: Engine): KeystoneErrorCode {.ks.}
 proc ks_strerror(code: KeystoneErrorCode): cstring {.ks.}
-proc ks_option(ks: Engine; ty: OptionType; value: csize): KeystoneErrorCode {.ks.}
+proc ks_option(ks: Engine; ty: OptionType; value: csize_t): KeystoneErrorCode {.ks.}
 proc ks_asm(ks: Engine; toasm: cstring; address: uint64;
-            encoding: ptr ptr byte; encoding_size: ptr csize; stat_count: ptr csize): cint {.ks.}
+            encoding: ptr ptr byte; encoding_size: ptr csize_t; stat_count: ptr csize_t): cint {.ks.}
 proc ks_free(p: ptr byte) {.ks.}
 
 proc `$`*(err: KeystoneErrorCode): string {.inline.} =
@@ -180,15 +181,15 @@ proc isSupported*(arch: Architecture): bool {.inline.} =
 
 proc `syntaxOption=`*(engine: Engine, val: SyntaxOption) {.inline.} =
   ## Sets the syntax options of the engine.
-  discard ks_option(engine, OptionType.SYNTAX, val.csize)
+  discard ks_option(engine, OptionType.SYNTAX, val.csize_t)
 
 proc `symbolResolver=`*(engine: Engine, resolver: SymbolResolver) {.inline.} =
   ## Sets the symbol resulver used by the engine.
-  discard ks_option(engine, OptionType.SYM_RESOLVER, cast[csize](resolver))
+  discard ks_option(engine, OptionType.SYM_RESOLVER, cast[csize_t](resolver))
 
-proc newEngine*(arch: Architecture, mode: Mode): Engine {.inline.} =
+proc newEngine*[T: Mode|uint](arch: Architecture, mode: T): Engine {.inline.} =
   ## Creates a new Keystone engine.
-  ks_open(arch, mode, addr result).raiseIfNeeded()
+  ks_open(arch, mode.uint, addr result).raiseIfNeeded()
 
 proc close*(engine: Engine) {.inline.} =
   ## Destroys the engine.
@@ -202,11 +203,11 @@ proc assemble*(engine: Engine, str: string, address: uint64 = 0): EncodedData {.
   ## Encodes the given string through the given engine.
   var
     enc: ptr byte
-    size: csize
-    stmts: csize
+    size: csize_t
+    stmts: csize_t
 
   let r = ks_asm(engine, str.cstring, address, addr enc, addr size, addr stmts)
-  
+
   if r == -1:
     engine.lastErrorCode.raiseIfNeeded()
 
@@ -221,15 +222,15 @@ proc assemble*(engine: Engine, str: string, buffer: var seq[byte], address: uint
   ## Encodes the given string through the given engine into the given buffer.
   var
     enc: ptr byte
-    size: csize
-    stmts: csize
+    size: csize_t
+    stmts: csize_t
 
   let r = ks_asm(engine, str.cstring, address, addr enc, addr size, addr stmts)
-  
+
   if r == -1:
     engine.lastErrorCode.raiseIfNeeded()
 
-  let e = cast[csize](enc)
+  let e = cast[csize_t](enc)
 
   for i in 0..size-1:
     buffer.add(cast[ptr byte](e + i)[])
@@ -240,7 +241,7 @@ proc assemble*(engine: Engine, str: string, buffer: var seq[byte], address: uint
 template ctor(name, arch, mode) =
   proc name*(): Engine {.inline.} =
     ## Creates a new Keystone engine using the chosen architecture.
-    ks_open(arch, mode, addr result).raiseIfNeeded()
+    ks_open(arch, mode.uint, addr result).raiseIfNeeded()
 
 ctor(newX86Engine,       Architecture.X86, Mode.b32)
 ctor(newX64Engine,       Architecture.X86, Mode.b64)
@@ -280,7 +281,7 @@ macro assembly*(engine: Engine, args: varargs[untyped]): untyped =
 
   let addBuf = args.len == 1
   let body = if addBuf: args[0] else: args[1]
-  
+
   expectKind(body, nnkStmtList)
 
   result = newNimNode(nnkStmtList, body)

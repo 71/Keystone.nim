@@ -85,6 +85,6 @@ suite "keystone tests":
 
     if false:
       newEVMEngine().close()
-    
+
     newHexagonEngine().close()
     newSystemzEngine().close()
